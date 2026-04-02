@@ -329,16 +329,11 @@ function initExplodingView() {
     let lastProgress = -1;
 
     function updateVideo(progress) {
-        // Only update if progress changed significantly (reduces seeking)
-        if (Math.abs(progress - lastProgress) < 0.02) return;
-        lastProgress = progress;
-
+        // Update video frame based on scroll progress
         if (duration && video.readyState >= 2) {
             const targetTime = progress * duration;
-            // Only seek if difference is significant
-            if (Math.abs(video.currentTime - targetTime) > 0.1) {
-                video.currentTime = targetTime;
-            }
+            // Always update currentTime to keep video in sync with scroll
+            video.currentTime = targetTime;
         }
 
         // Update active panel based on progress
@@ -354,66 +349,62 @@ function initExplodingView() {
         });
     }
 
-    let scrollTimeout;
     function handleScroll() {
-        if (!isActive) return;
+        if (!isActive || ticking) return;
 
-        if (scrollTimeout) {
-            clearTimeout(scrollTimeout);
-        }
+        ticking = true;
+        requestAnimationFrame(() => {
+            const rect = container.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
 
-        scrollTimeout = setTimeout(() => {
-            if (!ticking) {
-                ticking = true;
-                requestAnimationFrame(() => {
-                    const rect = container.getBoundingClientRect();
-                    const windowHeight = window.innerHeight;
+            // Calculate scroll progress through the section
+            // Section starts when top of container enters bottom of viewport
+            // Section ends when bottom of container leaves top of viewport
+            const sectionTop = rect.top;
+            const sectionHeight = container.offsetHeight;
 
-                    // Calculate scroll progress through the section
-                    const scrollStart = windowHeight;
-                    const scrollEnd = -container.offsetHeight + windowHeight;
-                    const scrollRange = scrollStart - scrollEnd;
-                    const currentScroll = scrollStart - rect.top;
-                    let progress = currentScroll / scrollRange;
+            // Progress: 0 when section top hits viewport bottom, 1 when section bottom hits viewport top
+            const totalScrollDistance = sectionHeight + windowHeight;
+            const currentPosition = windowHeight - sectionTop;
+            let progress = currentPosition / totalScrollDistance;
 
-                    // Clamp progress between 0 and 1
-                    progress = Math.max(0, Math.min(1, progress));
+            // Clamp progress between 0 and 1
+            progress = Math.max(0, Math.min(1, progress));
 
-                    updateVideo(progress);
-                    ticking = false;
-                });
-            }
-        }, 16); // Throttle to ~60fps
+            updateVideo(progress);
+            ticking = false;
+        });
     }
 
     // Wait for video metadata to load
-    video.addEventListener('loadedmetadata', () => {
+    function initVideo() {
         duration = video.duration;
         video.pause();
         video.currentTime = 0;
-    });
+    }
+
+    if (video.readyState >= 1) {
+        initVideo();
+    } else {
+        video.addEventListener('loadedmetadata', initVideo, { once: true });
+    }
 
     // Create scroll observer for the section
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 isActive = true;
-                window.addEventListener('scroll', handleScroll, { passive: true });
                 handleScroll();
             } else {
                 isActive = false;
-                window.removeEventListener('scroll', handleScroll);
             }
         });
-    }, { threshold: 0, rootMargin: '50px' });
+    }, { threshold: 0, rootMargin: '100px' });
 
     observer.observe(container);
 
-    // Trigger loadedmetadata if already loaded
-    if (video.readyState >= 2) {
-        video.dispatchEvent(new Event('loadedmetadata'));
-    }
-}
+    // Single scroll listener for the page
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
