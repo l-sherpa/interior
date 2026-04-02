@@ -1552,57 +1552,57 @@ ul {
         transform: translateY(0);
     }
 
-    /* Simplify exploding view for mobile - keep video playing */
+    /* Keep exploding view scroll animation on mobile but adjust layout */
     .exploding-view-container {
-        height: auto;
-        min-height: auto;
-        padding: 2rem 0;
+        height: 200vh;
     }
 
     .exploding-view-sticky {
-        position: relative;
-        height: auto;
-        min-height: auto;
-        display: flex;
-        flex-direction: column;
+        position: sticky;
+        height: 100vh;
     }
 
     .exploding-video-wrapper {
-        position: relative;
-        height: auto;
-        padding: 2rem 0;
+        position: absolute;
+        inset: 0;
     }
 
     .exploding-video-wrapper video {
-        width: 80%;
-        max-width: 400px;
+        width: 90%;
         margin: 0 auto;
-        display: block;
     }
 
-    /* Show skill panels statically on mobile */
+    /* Skill panels for mobile scroll animation */
     .skill-panel {
-        position: relative;
-        top: auto;
-        right: auto;
-        transform: none;
-        opacity: 1;
-        max-width: 90%;
-        margin: 1rem auto;
+        position: absolute;
+        top: 50%;
+        right: 5%;
+        transform: translateY(-50%) translateX(50px);
+        opacity: 0;
+        max-width: 85%;
         padding: 1.5rem;
         text-align: center;
-        pointer-events: auto;
+        background: rgba(250, 248, 245, 0.9);
+        border-radius: 4px;
     }
 
     .skill-panel.active {
-        transform: none;
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
     }
 
     .skill-number,
     .skill-title,
     .skill-text {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    .skill-panel.active .skill-number,
+    .skill-panel.active .skill-title,
+    .skill-panel.active .skill-text {
         opacity: 1;
-        transform: none;
+        transform: translateY(0);
     }
 
     /* Hide spacer on mobile */

@@ -295,16 +295,19 @@ function initCustomCursor() {
     });
 }
 
-// Reveal text animation
+// Reveal text animation - works on both desktop and mobile
 function initTextReveal() {
     const heroLines = document.querySelectorAll('.hero-line');
+    const heroContent = document.querySelector('.hero-content');
 
+    // Start with hero content visible but lines hidden
     heroLines.forEach((line, index) => {
         line.style.opacity = '0';
-        line.style.transform = 'translateY(100%)';
+        line.style.transform = 'translateY(30px)';
+        line.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
 
+        // Staggered reveal
         setTimeout(() => {
-            line.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
             line.style.opacity = '1';
             line.style.transform = 'translateY(0)';
         }, 300 + index * 200);
@@ -312,9 +315,13 @@ function initTextReveal() {
 }
 
 // Initialize text reveal on load
-window.addEventListener('load', initTextReveal);
+if (document.readyState === 'complete') {
+    initTextReveal();
+} else {
+    window.addEventListener('load', initTextReveal);
+}
 
-// Exploding View Scroll Video - optimized for mobile
+// Exploding View Scroll Video - works on desktop and mobile
 function initExplodingView() {
     const video = document.getElementById('exploding-video');
     const container = document.querySelector('.exploding-view-container');
@@ -326,100 +333,70 @@ function initExplodingView() {
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
     const isLowPower = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // On mobile: just play the video in a loop, show all panels
-    if (isMobile || isLowPower) {
-        // Show all panels on mobile
-        panels.forEach(panel => {
-            panel.classList.add('active');
-            panel.style.opacity = '1';
-            panel.style.transform = 'none';
-        });
-
-        // Play video muted and looped
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-
-        // Try to play
-        const playVideo = () => video.play().catch(() => {});
-        playVideo();
-
-        // Retry on interaction
-        document.addEventListener('touchstart', playVideo, { once: true });
-        return;
-    }
-
-    // Desktop: enable scroll-synced video scrubbing
-    video.pause(); // Keep paused for frame scrubbing
-    video.muted = true; // Must be muted for autoplay-like behavior
-
-    let ticking = false;
-    let isActive = false;
+    // Setup video
     let duration = 0;
-    let lastProgress = -1;
+    video.muted = true;
+    video.playsInline = true;
 
-    function updateVideo(progress) {
-        // Update video frame based on scroll progress
-        if (duration && video.readyState >= 2) {
-            const targetTime = progress * duration;
-            // Always update currentTime to keep video in sync with scroll
-            video.currentTime = targetTime;
-        }
-
-        // Update active panel based on progress
-        const panelCount = panels.length;
-        const panelThreshold = 1 / panelCount;
-
-        panels.forEach((panel, index) => {
-            const panelStart = index * panelThreshold;
-            const panelEnd = (index + 1) * panelThreshold;
-            const isActivePanel = progress >= panelStart && progress < panelEnd;
-
-            panel.classList.toggle('active', isActivePanel);
-        });
+    // On mobile, loop the video; on desktop, pause for frame scrubbing
+    if (isMobile || isLowPower) {
+        video.loop = true;
+        video.play().catch(() => {});
+    } else {
+        video.pause();
     }
 
-    function handleScroll() {
-        if (!isActive || ticking) return;
+    // Get video duration when ready
+    video.addEventListener('loadedmetadata', () => {
+        duration = video.duration;
+        if (!isMobile) {
+            video.currentTime = 0;
+        }
+    }, { once: true });
 
+    if (video.readyState >= 1) {
+        duration = video.duration;
+    }
+
+    // Scroll-based animation for both mobile and desktop
+    const panelCount = panels.length;
+    const panelThreshold = 1 / panelCount;
+    let ticking = false;
+
+    function updateOnScroll() {
+        if (ticking) return;
         ticking = true;
+
         requestAnimationFrame(() => {
             const rect = container.getBoundingClientRect();
             const windowHeight = window.innerHeight;
 
-            // Calculate scroll progress through the section
-            // Section starts when top of container enters bottom of viewport
-            // Section ends when bottom of container leaves top of viewport
-            const sectionTop = rect.top;
+            // Calculate progress through the section
             const sectionHeight = container.offsetHeight;
-
-            // Progress: 0 when section top hits viewport bottom, 1 when section bottom hits viewport top
             const totalScrollDistance = sectionHeight + windowHeight;
-            const currentPosition = windowHeight - sectionTop;
+            const currentPosition = windowHeight - rect.top;
             let progress = currentPosition / totalScrollDistance;
-
-            // Clamp progress between 0 and 1
             progress = Math.max(0, Math.min(1, progress));
 
-            updateVideo(progress);
+            // Update video time on desktop (skip on mobile since it's playing)
+            if (!isMobile && duration && video.readyState >= 2) {
+                video.currentTime = progress * duration;
+            }
+
+            // Update panels
+            panels.forEach((panel, index) => {
+                const panelStart = index * panelThreshold;
+                const panelEnd = (index + 1) * panelThreshold;
+                const isActivePanel = progress >= panelStart && progress < panelEnd;
+                panel.classList.toggle('active', isActivePanel);
+            });
+
             ticking = false;
         });
     }
 
-    // Wait for video metadata to load
-    function initVideo() {
-        duration = video.duration;
-        video.pause();
-        video.currentTime = 0;
-    }
-
-    if (video.readyState >= 1) {
-        initVideo();
-    } else {
-        video.addEventListener('loadedmetadata', initVideo, { once: true });
-    }
-
-    // Create scroll observer for the section
+    window.addEventListener('scroll', updateOnScroll, { passive: true });
+    updateOnScroll(); // Initial call
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
