@@ -57,6 +57,18 @@ function initNavigation() {
 
 // Scroll Animations Module
 function initScrollAnimations() {
+    // On mobile, make elements visible immediately without animation
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
+    if (isMobile) {
+        // Make all animated elements visible on mobile
+        document.querySelectorAll('.project-card, .service-card, .journal-card').forEach(el => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+        return;
+    }
+
     const observerOptions = {
         root: null,
         rootMargin: '0px',
@@ -308,18 +320,30 @@ function initExplodingView() {
 
     if (!video || !container) return;
 
-    // Skip scroll-video sync on mobile - show static panels instead
+    // Check if mobile
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
     const isLowPower = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // On mobile: just play the video in a loop, show all panels
     if (isMobile || isLowPower) {
-        // Mobile: show first panel, let video autoplay muted
-        panels.forEach((panel, i) => {
-            if (i === 0) panel.classList.add('active');
+        // Show all panels on mobile
+        panels.forEach(panel => {
+            panel.classList.add('active');
+            panel.style.opacity = '1';
+            panel.style.transform = 'none';
         });
+
+        // Play video muted and looped
         video.muted = true;
         video.loop = true;
-        video.play().catch(() => {});
+        video.playsInline = true;
+
+        // Try to play
+        const playVideo = () => video.play().catch(() => {});
+        playVideo();
+
+        // Retry on interaction
+        document.addEventListener('touchstart', playVideo, { once: true });
         return;
     }
 
@@ -470,18 +494,19 @@ function initVideoLoop() {
     if (heroVideo) {
         // Enable seamless loop
         heroVideo.loop = true;
+        heroVideo.muted = true;
         heroVideo.playbackRate = 1;
 
-        // Ensure video plays (handle autoplay restrictions)
-        const playPromise = heroVideo.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(() => {
-                // Show play button or retry on user interaction
-                document.addEventListener('touchstart', () => {
-                    heroVideo.play().catch(() => {});
-                }, { once: true });
-            });
-        }
+        // Force play on mobile
+        const playVideo = () => {
+            heroVideo.play().catch(() => {});
+        };
+
+        playVideo();
+
+        // Retry on user interaction if autoplay blocked
+        document.addEventListener('touchstart', playVideo, { once: true });
+        document.addEventListener('click', playVideo, { once: true });
     }
 }
 
