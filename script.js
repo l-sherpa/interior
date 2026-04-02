@@ -117,16 +117,27 @@ function initSmoothScroll() {
     });
 }
 
-// Parallax Module
+// Parallax Module - disabled on mobile for performance
 function initParallax() {
+    // Skip on touch/mobile devices for performance
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
     const heroVideo = document.querySelector('.hero-video');
     const philosophyImage = document.querySelector('.philosophy-image img');
 
     if (!heroVideo && !philosophyImage) return;
 
     let ticking = false;
+    let scrollTimeout;
 
+    // Throttled scroll listener
     window.addEventListener('scroll', () => {
+        if (scrollTimeout) return;
+
+        scrollTimeout = setTimeout(() => {
+            scrollTimeout = null;
+        }, 16); // ~60fps throttle
+
         if (!ticking) {
             window.requestAnimationFrame(() => {
                 const scrolled = window.pageYOffset;
@@ -155,7 +166,7 @@ function initParallax() {
 
             ticking = true;
         }
-    });
+    }, { passive: true });
 }
 
 // Project Card Hover Effect
@@ -289,22 +300,45 @@ function initTextReveal() {
 // Initialize text reveal on load
 window.addEventListener('load', initTextReveal);
 
-// Exploding View Scroll Video
+// Exploding View Scroll Video - optimized for mobile
 function initExplodingView() {
     const video = document.getElementById('exploding-video');
-    const section = document.querySelector('.exploding-view');
     const container = document.querySelector('.exploding-view-container');
     const panels = document.querySelectorAll('.skill-panel');
 
-    if (!video || !section || !container) return;
+    if (!video || !container) return;
+
+    // Skip scroll-video sync on mobile - show static panels instead
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    const isLowPower = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (isMobile || isLowPower) {
+        // Mobile: show first panel, let video autoplay muted
+        panels.forEach((panel, i) => {
+            if (i === 0) panel.classList.add('active');
+        });
+        video.muted = true;
+        video.loop = true;
+        video.play().catch(() => {});
+        return;
+    }
 
     let ticking = false;
     let isActive = false;
     let duration = 0;
+    let lastProgress = -1;
 
     function updateVideo(progress) {
-        if (duration && video.currentTime !== progress * duration) {
-            video.currentTime = progress * duration;
+        // Only update if progress changed significantly (reduces seeking)
+        if (Math.abs(progress - lastProgress) < 0.02) return;
+        lastProgress = progress;
+
+        if (duration && video.readyState >= 2) {
+            const targetTime = progress * duration;
+            // Only seek if difference is significant
+            if (Math.abs(video.currentTime - targetTime) > 0.1) {
+                video.currentTime = targetTime;
+            }
         }
 
         // Update active panel based on progress
@@ -314,43 +348,42 @@ function initExplodingView() {
         panels.forEach((panel, index) => {
             const panelStart = index * panelThreshold;
             const panelEnd = (index + 1) * panelThreshold;
+            const isActivePanel = progress >= panelStart && progress < panelEnd;
 
-            if (progress >= panelStart - 0.1 && progress <= panelEnd + 0.1) {
-                const panelProgress = (progress - panelStart) / panelThreshold;
-                const isActivePanel = progress >= panelStart && progress <= panelEnd;
-
-                if (isActivePanel) {
-                    panel.classList.add('active');
-                } else {
-                    panel.classList.remove('active');
-                }
-            } else {
-                panel.classList.remove('active');
-            }
+            panel.classList.toggle('active', isActivePanel);
         });
     }
 
+    let scrollTimeout;
     function handleScroll() {
-        if (!isActive || !ticking) {
-            ticking = true;
-            requestAnimationFrame(() => {
-                const rect = container.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
+        if (!isActive) return;
 
-                // Calculate scroll progress through the section
-                const scrollStart = windowHeight;
-                const scrollEnd = -container.offsetHeight + windowHeight;
-                const scrollRange = scrollStart - scrollEnd;
-                const currentScroll = scrollStart - rect.top;
-                let progress = currentScroll / scrollRange;
-
-                // Clamp progress between 0 and 1
-                progress = Math.max(0, Math.min(1, progress));
-
-                updateVideo(progress);
-                ticking = false;
-            });
+        if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
         }
+
+        scrollTimeout = setTimeout(() => {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(() => {
+                    const rect = container.getBoundingClientRect();
+                    const windowHeight = window.innerHeight;
+
+                    // Calculate scroll progress through the section
+                    const scrollStart = windowHeight;
+                    const scrollEnd = -container.offsetHeight + windowHeight;
+                    const scrollRange = scrollStart - scrollEnd;
+                    const currentScroll = scrollStart - rect.top;
+                    let progress = currentScroll / scrollRange;
+
+                    // Clamp progress between 0 and 1
+                    progress = Math.max(0, Math.min(1, progress));
+
+                    updateVideo(progress);
+                    ticking = false;
+                });
+            }
+        }, 16); // Throttle to ~60fps
     }
 
     // Wait for video metadata to load
@@ -372,7 +405,7 @@ function initExplodingView() {
                 window.removeEventListener('scroll', handleScroll);
             }
         });
-    }, { threshold: 0, rootMargin: '100px' });
+    }, { threshold: 0, rootMargin: '50px' });
 
     observer.observe(container);
 
@@ -380,9 +413,6 @@ function initExplodingView() {
     if (video.readyState >= 2) {
         video.dispatchEvent(new Event('loadedmetadata'));
     }
-
-    // Initial scroll check
-    handleScroll();
 }
 
 // Initialize on DOM ready
@@ -415,50 +445,54 @@ function initMagneticButtons() {
 // Initialize magnetic buttons on load
 window.addEventListener('load', initMagneticButtons);
 
-// Mobile optimizations
+// Mobile optimizations - disable heavy effects on touch devices
 function initMobileOptimizations() {
-    // Disable parallax on mobile for performance
-    if (window.matchMedia('(pointer: coarse)').matches) {
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
+    if (isMobile) {
+        // Disable parallax on mobile
         const heroVideo = document.querySelector('.hero-video');
         if (heroVideo) {
             heroVideo.style.transform = 'scale(1.05)';
+            heroVideo.style.willChange = 'auto';
         }
+
+        // Reduce frame rate for intersection observer
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: [0, 0.25, 0.5, 0.75, 1]
+        };
+
+        // Use the optimized options for any new observers
+        window._mobileOptimized = true;
     }
 }
 
 // Initialize mobile optimizations
 document.addEventListener('DOMContentLoaded', initMobileOptimizations);
 
-// Video Rewind and Loop - Hero video plays forward, then backward, then loops
-function initVideoRewindLoop() {
+// Video loop - simple seamless loop for better performance
+function initVideoLoop() {
     const heroVideo = document.querySelector('.hero-video');
 
     if (heroVideo) {
-        let isRewinding = false;
+        // Enable seamless loop
+        heroVideo.loop = true;
+        heroVideo.playbackRate = 1;
 
-        heroVideo.addEventListener('ended', () => {
-            if (!isRewinding) {
-                isRewinding = true;
-
-                // Smooth rewind at 1x speed using small steps
-                const stepSize = 0.033; // ~30fps, roughly 1x speed
-
-                function rewindStep() {
-                    if (heroVideo.currentTime > stepSize) {
-                        heroVideo.currentTime -= stepSize;
-                        requestAnimationFrame(rewindStep);
-                    } else {
-                        heroVideo.currentTime = 0;
-                        isRewinding = false;
-                        heroVideo.play();
-                    }
-                }
-
-                rewindStep();
-            }
-                });
+        // Ensure video plays (handle autoplay restrictions)
+        const playPromise = heroVideo.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                // Show play button or retry on user interaction
+                document.addEventListener('touchstart', () => {
+                    heroVideo.play().catch(() => {});
+                }, { once: true });
+            });
+        }
     }
 }
 
-// Initialize video rewind loop
-document.addEventListener('DOMContentLoaded', initVideoRewindLoop);
+// Initialize video loop
+document.addEventListener('DOMContentLoaded', initVideoLoop);

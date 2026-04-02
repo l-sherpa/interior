@@ -37,7 +37,17 @@
     <section class="hero">
         <div class="hero-bg">
             <div class="hero-video-container">
-                <video autoplay muted playsinline preload="auto" class="hero-video">
+                <video
+                    autoplay
+                    muted
+                    playsinline
+                    loop
+                    preload="metadata"
+                    class="hero-video"
+                    poster="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80"
+                    disablePictureInPicture
+                    disableRemotePlayback
+                >
                     <source src="interior_design.mp4" type="video/mp4">
                 </video>
                 <div class="hero-overlay"></div>
@@ -73,7 +83,15 @@
         <div class="exploding-view-container">
             <div class="exploding-view-sticky">
                 <div class="exploding-video-wrapper">
-                    <video id="exploding-video" muted playsinline preload="metadata" poster="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80">
+                    <video
+                        id="exploding-video"
+                        muted
+                        playsinline
+                        preload="metadata"
+                        poster="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80"
+                        disablePictureInPicture
+                        disableRemotePlayback
+                    >
                         <source src="Exploding_view_home.mp4" type="video/mp4">
                     </video>
                 </div>
