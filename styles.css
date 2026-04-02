@@ -548,38 +548,46 @@ ul {
 /* Responsive for exploding view */
 @media (max-width: 768px) {
     .exploding-view-container {
-        height: 300vh;
+        height: 400vh;
     }
 
     .exploding-view-sticky {
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        padding-top: 5vh;
+        padding-top: 3vh;
+        height: auto;
+        min-height: 100vh;
     }
 
     .exploding-video-wrapper {
         position: relative;
-        height: 50vh;
+        height: 40vh;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .exploding-video-wrapper video {
-        width: 90%;
-        height: 100%;
+        width: 95%;
+        height: auto;
+        max-height: 40vh;
         object-fit: contain;
         margin: 0 auto;
+        display: block;
     }
 
     .exploding-content {
         position: relative;
         height: auto;
-        padding: 2rem 1rem;
+        padding: 1.5rem 1rem;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
         gap: 1rem;
+        pointer-events: auto;
     }
 
     .skill-panel {
@@ -588,15 +596,16 @@ ul {
         right: auto;
         bottom: auto;
         transform: translateY(20px);
-        max-width: 90%;
-        width: 90%;
+        max-width: 95%;
+        width: 95%;
         text-align: center;
         padding: 1.25rem;
-        background: rgba(250, 248, 245, 0.95);
+        background: rgba(250, 248, 245, 0.98);
         border: 1px solid var(--color-border);
         opacity: 0;
         transition: opacity 0.4s ease, transform 0.4s ease;
         margin-bottom: 1rem;
+        border-radius: 4px;
     }
 
     .skill-panel.active {
@@ -605,17 +614,17 @@ ul {
     }
 
     .skill-number {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         margin-bottom: 0.5rem;
     }
 
     .skill-title {
-        font-size: 1.25rem;
+        font-size: 1.35rem;
         margin-bottom: 0.5rem;
     }
 
     .skill-text {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         line-height: 1.5;
     }
 }

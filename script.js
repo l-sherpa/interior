@@ -229,21 +229,24 @@ function initExplodingView() {
     let duration = 0;
     video.muted = true;
     video.playsInline = true;
-    video.pause();
-
-    // Disable native looping - we control playback via scroll
     video.loop = false;
+
+    // Ensure first frame is shown
+    video.addEventListener('loadeddata', () => {
+        if (video.readyState >= 2) {
+            video.currentTime = 0.01; // Show first frame
+        }
+    }, { once: true });
 
     // Get video duration when ready
     video.addEventListener('loadedmetadata', () => {
         duration = video.duration;
-        if (!isMobile && !isLowPower) {
-            video.currentTime = 0;
-        }
     }, { once: true });
 
-    if (video.readyState >= 1) {
+    // Try to set initial frame if already loaded
+    if (video.readyState >= 2) {
         duration = video.duration;
+        video.currentTime = 0.01;
     }
 
     // Scroll-based animation for panels (works on both mobile and desktop)
@@ -258,22 +261,28 @@ function initExplodingView() {
         requestAnimationFrame(() => {
             const rect = container.getBoundingClientRect();
             const windowHeight = window.innerHeight;
-            const stickyElement = document.querySelector('.exploding-view-sticky');
-            const stickyHeight = stickyElement ? stickyElement.offsetHeight : windowHeight;
 
-            // Calculate progress: when section enters viewport to when sticky element would unstick
-            const sectionTop = container.offsetTop;
+            // Calculate scroll progress through the section
+            // Section starts when top enters viewport, ends when bottom leaves viewport
+            const sectionTop = rect.top + window.pageYOffset;
             const sectionHeight = container.offsetHeight;
-            const scrollPosition = window.pageYOffset + windowHeight;
-            const sectionBottom = sectionTop + sectionHeight;
 
-            // Progress from when section top hits viewport bottom to when section bottom hits viewport top
-            let progress = (scrollPosition - sectionTop) / (sectionHeight + windowHeight);
+            // Current scroll position relative to section start
+            const scrollTop = window.pageYOffset;
+            const sectionStart = sectionTop - windowHeight;
+            const sectionEnd = sectionTop + sectionHeight;
+
+            // Progress: 0 when section first enters viewport, 1 when it leaves
+            let progress = (scrollTop - sectionStart) / (sectionEnd - sectionStart);
             progress = Math.max(0, Math.min(1, progress));
 
-            // Update video time based on scroll progress (all devices)
-            if (duration && video.readyState >= 2) {
-                video.currentTime = progress * duration;
+            // Update video time based on scroll progress
+            if (duration && video.readyState >= 2 && progress > 0 && progress < 1) {
+                const targetTime = progress * duration;
+                // Only update if significant change (performance)
+                if (Math.abs(video.currentTime - targetTime) > 0.05) {
+                    video.currentTime = targetTime;
+                }
             }
 
             // Update panels - each panel shows for 1/panelCount of the scroll
