@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initScrollAnimations();
     initSmoothScroll();
     initParallax();
+    initExplodingView();
+    initVideoLoop();
+    initTextReveal();
 });
 
 // Navigation Module
@@ -15,6 +18,8 @@ function initNavigation() {
     const navToggle = document.querySelector('.nav-toggle');
     const navLinks = document.querySelector('.nav-links');
     let lastScroll = 0;
+
+    if (!nav) return;
 
     // Navbar scroll behavior
     window.addEventListener('scroll', () => {
@@ -35,35 +40,30 @@ function initNavigation() {
         }
 
         lastScroll = currentScroll;
-    });
+    }, { passive: true });
 
     // Mobile menu toggle
-    navToggle.addEventListener('click', () => {
-        navLinks.classList.toggle('active');
-        navToggle.classList.toggle('active');
-        document.body.classList.toggle('menu-open');
-    });
-
-    // Close mobile menu on link click
-    const links = navLinks.querySelectorAll('.nav-link');
-    links.forEach(link => {
-        link.addEventListener('click', () => {
-            navLinks.classList.remove('active');
-            navToggle.classList.remove('active');
-            document.body.classList.remove('menu-open');
+    if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            navToggle.classList.toggle('active');
+            document.body.classList.toggle('menu-open');
         });
-    });
+
+        // Close mobile menu on link click
+        const links = navLinks.querySelectorAll('.nav-link');
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                navToggle.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            });
+        });
+    }
 }
 
-// Scroll Animations Module
+// Scroll Animations Module - works on both desktop and mobile
 function initScrollAnimations() {
-    // Only animate on desktop - mobile gets immediate visibility
-    const isMobile = window.matchMedia('(pointer: coarse)').matches;
-
-    if (isMobile) {
-        return; // Elements already visible in CSS
-    }
-
     const observerOptions = {
         root: null,
         rootMargin: '0px',
@@ -74,19 +74,15 @@ function initScrollAnimations() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('visible');
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
                 observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
 
-    // Add animation class and observe project cards
+    // Observe project cards - add animation class first
     const projectCards = document.querySelectorAll('.project-card');
     projectCards.forEach(card => {
         card.classList.add('animate-on-scroll');
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(40px)';
         observer.observe(card);
     });
 
@@ -118,7 +114,8 @@ function initSmoothScroll() {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                const navHeight = document.querySelector('.nav').offsetHeight;
+                const nav = document.querySelector('.nav');
+                const navHeight = nav ? nav.offsetHeight : 0;
                 const targetPosition = target.getBoundingClientRect().top + window.pageYOffset;
                 const offsetPosition = targetPosition - navHeight - 20;
 
@@ -165,13 +162,15 @@ function initParallax() {
                 // Philosophy image parallax
                 if (philosophyImage) {
                     const philosophySection = document.querySelector('.philosophy');
-                    const sectionTop = philosophySection.offsetTop;
-                    const sectionHeight = philosophySection.offsetHeight;
-                    const scrollPosition = scrolled - sectionTop + window.innerHeight;
+                    if (philosophySection) {
+                        const sectionTop = philosophySection.offsetTop;
+                        const sectionHeight = philosophySection.offsetHeight;
+                        const scrollPosition = scrolled - sectionTop + window.innerHeight;
 
-                    if (scrollPosition > 0 && scrollPosition < sectionHeight + window.innerHeight) {
-                        const parallaxSpeed = 0.1;
-                        philosophyImage.style.transform = `translateY(${scrollPosition * parallaxSpeed}px)`;
+                        if (scrollPosition > 0 && scrollPosition < sectionHeight + window.innerHeight) {
+                            const parallaxSpeed = 0.1;
+                            philosophyImage.style.transform = `translateY(${scrollPosition * parallaxSpeed}px)`;
+                        }
                     }
                 }
 
@@ -183,142 +182,35 @@ function initParallax() {
     }, { passive: true });
 }
 
-// Project Card Hover Effect
-function initProjectHover() {
-    const projectCards = document.querySelectorAll('.project-card');
-
-    projectCards.forEach(card => {
-        card.addEventListener('mouseenter', (e) => {
-            const overlay = card.querySelector('.project-overlay');
-            const view = card.querySelector('.project-view');
-
-            if (overlay && view) {
-                overlay.style.opacity = '1';
-                view.style.opacity = '1';
-                view.style.transform = 'translateY(0)';
-            }
-        });
-
-        card.addEventListener('mouseleave', (e) => {
-            const overlay = card.querySelector('.project-overlay');
-            const view = card.querySelector('.project-view');
-
-            if (overlay && view) {
-                overlay.style.opacity = '0';
-                view.style.opacity = '0';
-                view.style.transform = 'translateY(20px)';
-            }
-        });
-    });
-}
-
-// Custom Cursor (for desktop)
-function initCustomCursor() {
-    // Only on non-touch devices
-    if (window.matchMedia('(pointer: coarse)').matches) return;
-
-    const cursor = document.createElement('div');
-    cursor.className = 'custom-cursor';
-    cursor.style.cssText = `
-        position: fixed;
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--color-accent);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 9999;
-        transition: transform 0.15s ease-out, opacity 0.3s ease;
-        opacity: 0;
-    `;
-
-    const cursorDot = document.createElement('div');
-    cursorDot.className = 'cursor-dot';
-    cursorDot.style.cssText = `
-        position: fixed;
-        width: 4px;
-        height: 4px;
-        background-color: var(--color-accent);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 9999;
-        transition: opacity 0.3s ease;
-        opacity: 0;
-    `;
-
-    document.body.appendChild(cursor);
-    document.body.appendChild(cursorDot);
-
-    let mouseX = 0, mouseY = 0;
-    let cursorX = 0, cursorY = 0;
-
-    document.addEventListener('mousemove', (e) => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        cursor.style.opacity = '1';
-        cursorDot.style.opacity = '1';
-    });
-
-    document.addEventListener('mouseleave', () => {
-        cursor.style.opacity = '0';
-        cursorDot.style.opacity = '0';
-    });
-
-    // Smooth cursor animation
-    function animateCursor() {
-        const dx = mouseX - cursorX;
-        const dy = mouseY - cursorY;
-
-        cursorX += dx * 0.15;
-        cursorY += dy * 0.15;
-
-        cursor.style.left = cursorX - 10 + 'px';
-        cursor.style.top = cursorY - 10 + 'px';
-        cursorDot.style.left = mouseX - 2 + 'px';
-        cursorDot.style.top = mouseY - 2 + 'px';
-
-        requestAnimationFrame(animateCursor);
-    }
-
-    animateCursor();
-
-    // Hover states for interactive elements
-    const interactiveElements = document.querySelectorAll('a, button, .project-card');
-    interactiveElements.forEach(el => {
-        el.addEventListener('mouseenter', () => {
-            cursor.style.transform = 'scale(2)';
-            cursor.style.borderColor = 'var(--color-charcoal)';
-        });
-        el.addEventListener('mouseleave', () => {
-            cursor.style.transform = 'scale(1)';
-            cursor.style.borderColor = 'var(--color-accent)';
-        });
-    });
-}
-
 // Reveal text animation - works on both desktop and mobile
 function initTextReveal() {
-    const heroLines = document.querySelectorAll('.hero-line');
     const heroContent = document.querySelector('.hero-content');
+    const heroLines = document.querySelectorAll('.hero-line');
 
-    // Start with hero content visible but lines hidden
-    heroLines.forEach((line, index) => {
+    if (heroLines.length === 0) return;
+
+    // Add animation class to hero content
+    if (heroContent) {
+        heroContent.classList.add('animate-in');
+    }
+
+    // Start with lines hidden
+    heroLines.forEach((line) => {
         line.style.opacity = '0';
         line.style.transform = 'translateY(30px)';
-        line.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
-
-        // Staggered reveal
-        setTimeout(() => {
-            line.style.opacity = '1';
-            line.style.transform = 'translateY(0)';
-        }, 300 + index * 200);
     });
-}
 
-// Initialize text reveal on load
-if (document.readyState === 'complete') {
-    initTextReveal();
-} else {
-    window.addEventListener('load', initTextReveal);
+    // Trigger animation after a short delay
+    setTimeout(() => {
+        heroLines.forEach((line, index) => {
+            line.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+            // Staggered reveal
+            setTimeout(() => {
+                line.style.opacity = '1';
+                line.style.transform = 'translateY(0)';
+            }, index * 200);
+        });
+    }, 600);
 }
 
 // Exploding View Scroll Video - works on desktop and mobile
@@ -327,7 +219,7 @@ function initExplodingView() {
     const container = document.querySelector('.exploding-view-container');
     const panels = document.querySelectorAll('.skill-panel');
 
-    if (!video || !container) return;
+    if (!video || !container || panels.length === 0) return;
 
     // Check if mobile
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
@@ -349,7 +241,7 @@ function initExplodingView() {
     // Get video duration when ready
     video.addEventListener('loadedmetadata', () => {
         duration = video.duration;
-        if (!isMobile) {
+        if (!isMobile && !isLowPower) {
             video.currentTime = 0;
         }
     }, { once: true });
@@ -379,7 +271,7 @@ function initExplodingView() {
             progress = Math.max(0, Math.min(1, progress));
 
             // Update video time on desktop (skip on mobile since it's playing)
-            if (!isMobile && duration && video.readyState >= 2) {
+            if (!isMobile && !isLowPower && duration && video.readyState >= 2) {
                 video.currentTime = progress * duration;
             }
 
@@ -397,101 +289,27 @@ function initExplodingView() {
 
     window.addEventListener('scroll', updateOnScroll, { passive: true });
     updateOnScroll(); // Initial call
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                isActive = true;
-                handleScroll();
-            } else {
-                isActive = false;
-            }
-        });
-    }, { threshold: 0, rootMargin: '100px' });
-
-    observer.observe(container);
-
-    // Single scroll listener for the page
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-    initExplodingView();
-});
-
-// Magnetic button effect (disabled on touch devices)
-function initMagneticButtons() {
-    // Skip on touch devices
-    if (window.matchMedia('(pointer: coarse)').matches) return;
-
-    const buttons = document.querySelectorAll('.hero-cta, .text-link');
-
-    buttons.forEach(button => {
-        button.addEventListener('mousemove', (e) => {
-            const rect = button.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-
-            button.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px)`;
-        });
-
-        button.addEventListener('mouseleave', () => {
-            button.style.transform = 'translate(0, 0)';
-        });
-    });
 }
-
-// Initialize magnetic buttons on load
-window.addEventListener('load', initMagneticButtons);
-
-// Mobile optimizations - disable heavy effects on touch devices
-function initMobileOptimizations() {
-    const isMobile = window.matchMedia('(pointer: coarse)').matches;
-
-    if (isMobile) {
-        // Disable parallax on mobile
-        const heroVideo = document.querySelector('.hero-video');
-        if (heroVideo) {
-            heroVideo.style.transform = 'scale(1.05)';
-            heroVideo.style.willChange = 'auto';
-        }
-
-        // Reduce frame rate for intersection observer
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: [0, 0.25, 0.5, 0.75, 1]
-        };
-
-        // Use the optimized options for any new observers
-        window._mobileOptimized = true;
-    }
-}
-
-// Initialize mobile optimizations
-document.addEventListener('DOMContentLoaded', initMobileOptimizations);
 
 // Video loop - simple seamless loop for better performance
 function initVideoLoop() {
     const heroVideo = document.querySelector('.hero-video');
 
-    if (heroVideo) {
-        // Enable seamless loop
-        heroVideo.loop = true;
-        heroVideo.muted = true;
-        heroVideo.playbackRate = 1;
+    if (!heroVideo) return;
 
-        // Force play on mobile
-        const playVideo = () => {
-            heroVideo.play().catch(() => {});
-        };
+    // Enable seamless loop
+    heroVideo.loop = true;
+    heroVideo.muted = true;
+    heroVideo.playbackRate = 1;
 
-        playVideo();
+    // Force play
+    const playVideo = () => {
+        heroVideo.play().catch(() => {});
+    };
 
-        // Retry on user interaction if autoplay blocked
-        document.addEventListener('touchstart', playVideo, { once: true });
-        document.addEventListener('click', playVideo, { once: true });
-    }
+    playVideo();
+
+    // Retry on user interaction if autoplay blocked
+    document.addEventListener('touchstart', playVideo, { once: true });
+    document.addEventListener('click', playVideo, { once: true });
 }
-
-// Initialize video loop
-document.addEventListener('DOMContentLoaded', initVideoLoop);
