@@ -57,16 +57,11 @@ function initNavigation() {
 
 // Scroll Animations Module
 function initScrollAnimations() {
-    // On mobile, make elements visible immediately without animation
+    // Only animate on desktop - mobile gets immediate visibility
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
 
     if (isMobile) {
-        // Make all animated elements visible on mobile
-        document.querySelectorAll('.project-card, .service-card, .journal-card').forEach(el => {
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-        });
-        return;
+        return; // Elements already visible in CSS
     }
 
     const observerOptions = {
@@ -79,14 +74,21 @@ function initScrollAnimations() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('visible');
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
                 observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
 
-    // Observe project cards
+    // Add animation class and observe project cards
     const projectCards = document.querySelectorAll('.project-card');
-    projectCards.forEach(card => observer.observe(card));
+    projectCards.forEach(card => {
+        card.classList.add('animate-on-scroll');
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(40px)';
+        observer.observe(card);
+    });
 
     // Observe service cards
     const serviceCards = document.querySelectorAll('.service-card');
@@ -346,6 +348,10 @@ function initExplodingView() {
         document.addEventListener('touchstart', playVideo, { once: true });
         return;
     }
+
+    // Desktop: enable scroll-synced video scrubbing
+    video.pause(); // Keep paused for frame scrubbing
+    video.muted = true; // Must be muted for autoplay-like behavior
 
     let ticking = false;
     let isActive = false;

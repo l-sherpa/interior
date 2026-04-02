@@ -651,11 +651,17 @@ ul {
 .project-card {
     grid-column: span 6;
     cursor: pointer;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Animation class for scroll reveal - starts hidden */
+.project-card.animate-on-scroll {
     opacity: 0;
     transform: translateY(40px);
 }
 
-.project-card.visible {
+.project-card.animate-on-scroll.visible {
     opacity: 1;
     transform: translateY(0);
     transition: opacity 0.8s var(--transition-smooth), transform 0.8s var(--transition-smooth);
