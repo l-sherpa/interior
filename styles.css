@@ -547,22 +547,76 @@ ul {
 
 /* Responsive for exploding view */
 @media (max-width: 768px) {
-    .skill-panel {
-        right: 50%;
-        transform: translate(50%, -50%) translateX(30px);
-        max-width: 80%;
-        text-align: center;
-        padding: 2rem;
-        background: rgba(250, 248, 245, 0.85);
+    .exploding-view-container {
+        height: 300vh;
     }
 
-    .skill-panel.active {
-        transform: translate(50%, -50%) translateX(0);
+    .exploding-view-sticky {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-top: 5vh;
+    }
+
+    .exploding-video-wrapper {
+        position: relative;
+        height: 50vh;
+        flex-shrink: 0;
     }
 
     .exploding-video-wrapper video {
         width: 90%;
+        height: 100%;
+        object-fit: contain;
         margin: 0 auto;
+    }
+
+    .exploding-content {
+        position: relative;
+        height: auto;
+        padding: 2rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1rem;
+    }
+
+    .skill-panel {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        transform: translateY(20px);
+        max-width: 90%;
+        width: 90%;
+        text-align: center;
+        padding: 1.25rem;
+        background: rgba(250, 248, 245, 0.95);
+        border: 1px solid var(--color-border);
+        opacity: 0;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+        margin-bottom: 1rem;
+    }
+
+    .skill-panel.active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .skill-number {
+        font-size: 0.65rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .skill-title {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .skill-text {
+        font-size: 0.85rem;
+        line-height: 1.5;
     }
 }
 
@@ -1555,64 +1609,6 @@ ul {
     .project-card {
         opacity: 1;
         transform: translateY(0);
-    }
-
-    /* Keep exploding view scroll animation on mobile but adjust layout */
-    .exploding-view-container {
-        height: 200vh;
-    }
-
-    .exploding-view-sticky {
-        position: sticky;
-        height: 100vh;
-    }
-
-    .exploding-video-wrapper {
-        position: absolute;
-        inset: 0;
-    }
-
-    .exploding-video-wrapper video {
-        width: 90%;
-        margin: 0 auto;
-    }
-
-    /* Skill panels for mobile scroll animation */
-    .skill-panel {
-        position: absolute;
-        top: 50%;
-        right: 5%;
-        transform: translateY(-50%) translateX(50px);
-        opacity: 0;
-        max-width: 85%;
-        padding: 1.5rem;
-        text-align: center;
-        background: rgba(250, 248, 245, 0.9);
-        border-radius: 4px;
-    }
-
-    .skill-panel.active {
-        opacity: 1;
-        transform: translateY(-50%) translateX(0);
-    }
-
-    .skill-number,
-    .skill-title,
-    .skill-text {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    .skill-panel.active .skill-number,
-    .skill-panel.active .skill-title,
-    .skill-panel.active .skill-text {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    /* Hide spacer on mobile */
-    .exploding-spacer {
-        display: none;
     }
 
     /* Disable hover effects on touch devices */

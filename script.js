@@ -229,14 +229,10 @@ function initExplodingView() {
     let duration = 0;
     video.muted = true;
     video.playsInline = true;
+    video.pause();
 
-    // On mobile, loop the video; on desktop, pause for frame scrubbing
-    if (isMobile || isLowPower) {
-        video.loop = true;
-        video.play().catch(() => {});
-    } else {
-        video.pause();
-    }
+    // Disable native looping - we control playback via scroll
+    video.loop = false;
 
     // Get video duration when ready
     video.addEventListener('loadedmetadata', () => {
@@ -250,7 +246,7 @@ function initExplodingView() {
         duration = video.duration;
     }
 
-    // Scroll-based animation for both mobile and desktop
+    // Scroll-based animation for panels (works on both mobile and desktop)
     const panelCount = panels.length;
     const panelThreshold = 1 / panelCount;
     let ticking = false;
@@ -262,25 +258,35 @@ function initExplodingView() {
         requestAnimationFrame(() => {
             const rect = container.getBoundingClientRect();
             const windowHeight = window.innerHeight;
+            const stickyElement = document.querySelector('.exploding-view-sticky');
+            const stickyHeight = stickyElement ? stickyElement.offsetHeight : windowHeight;
 
-            // Calculate progress through the section
+            // Calculate progress: when section enters viewport to when sticky element would unstick
+            const sectionTop = container.offsetTop;
             const sectionHeight = container.offsetHeight;
-            const totalScrollDistance = sectionHeight + windowHeight;
-            const currentPosition = windowHeight - rect.top;
-            let progress = currentPosition / totalScrollDistance;
+            const scrollPosition = window.pageYOffset + windowHeight;
+            const sectionBottom = sectionTop + sectionHeight;
+
+            // Progress from when section top hits viewport bottom to when section bottom hits viewport top
+            let progress = (scrollPosition - sectionTop) / (sectionHeight + windowHeight);
             progress = Math.max(0, Math.min(1, progress));
 
-            // Update video time on desktop (skip on mobile since it's playing)
-            if (!isMobile && !isLowPower && duration && video.readyState >= 2) {
+            // Update video time based on scroll progress (all devices)
+            if (duration && video.readyState >= 2) {
                 video.currentTime = progress * duration;
             }
 
-            // Update panels
+            // Update panels - each panel shows for 1/panelCount of the scroll
             panels.forEach((panel, index) => {
                 const panelStart = index * panelThreshold;
                 const panelEnd = (index + 1) * panelThreshold;
                 const isActivePanel = progress >= panelStart && progress < panelEnd;
-                panel.classList.toggle('active', isActivePanel);
+
+                if (isActivePanel) {
+                    panel.classList.add('active');
+                } else {
+                    panel.classList.remove('active');
+                }
             });
 
             ticking = false;
