@@ -226,6 +226,13 @@ function initExplodingView() {
 
     console.log('Exploding view initialized');
 
+    // Force video visibility immediately (especially for mobile)
+    video.style.display = 'block';
+    video.style.visibility = 'visible';
+    video.style.opacity = '1';
+    video.style.width = '100%';
+    video.style.height = '100%';
+
     // Setup video
     let duration = 0;
     let targetTime = 0;
@@ -237,16 +244,24 @@ function initExplodingView() {
     video.muted = true;
     video.playsInline = true;
     video.loop = false;
+    video.preload = 'auto';
     video.pause();
+
+    // Force video visibility on mobile
+    video.style.display = 'block';
+    video.style.visibility = 'visible';
+    video.style.opacity = '1';
 
     // Smooth interpolation factor (0.1 = smooth, 0.3 = responsive)
     const lerpFactor = window.matchMedia('(pointer: coarse)').matches ? 0.15 : 0.12;
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
 
     // Get video duration
     const setupDuration = () => {
         if (video.duration) {
             duration = video.duration;
             console.log('Video duration:', duration);
+            // Ensure first frame is visible
             if (video.readyState >= 2) {
                 video.currentTime = 0;
                 currentTime = 0;
@@ -255,7 +270,20 @@ function initExplodingView() {
         }
     };
 
+    // Load video explicitly on mobile
+    if (isMobile) {
+        video.load();
+    }
+
     video.addEventListener('loadedmetadata', setupDuration, { once: true });
+    video.addEventListener('loadeddata', () => {
+        console.log('Video data loaded, readyState:', video.readyState);
+        // Force show first frame
+        if (video.readyState >= 2) {
+            video.currentTime = 0;
+        }
+    }, { once: true });
+
     if (video.readyState >= 1) setupDuration();
 
     // Panel count and thresholds
