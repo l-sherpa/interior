@@ -213,97 +213,197 @@ function initTextReveal() {
     }, 600);
 }
 
-// Exploding View Scroll Video - works on desktop and mobile
+// Exploding View Scroll Video - smooth scroll-linked animation
 function initExplodingView() {
     const video = document.getElementById('exploding-video');
     const container = document.querySelector('.exploding-view-container');
     const panels = document.querySelectorAll('.skill-panel');
 
-    if (!video || !container || panels.length === 0) return;
+    if (!video || !container || panels.length === 0) {
+        console.log('Exploding view: missing elements');
+        return;
+    }
 
-    // Check if mobile
-    const isMobile = window.matchMedia('(pointer: coarse)').matches;
-    const isLowPower = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    console.log('Exploding view initialized');
 
     // Setup video
     let duration = 0;
+    let targetTime = 0;
+    let currentTime = 0;
+    let isInView = false;
+    let animationFrameId = null;
+    let lastProgress = -1;
+
     video.muted = true;
     video.playsInline = true;
     video.loop = false;
+    video.pause();
 
-    // Ensure first frame is shown
-    video.addEventListener('loadeddata', () => {
-        if (video.readyState >= 2) {
-            video.currentTime = 0.01; // Show first frame
+    // Smooth interpolation factor (0.1 = smooth, 0.3 = responsive)
+    const lerpFactor = window.matchMedia('(pointer: coarse)').matches ? 0.15 : 0.12;
+
+    // Get video duration
+    const setupDuration = () => {
+        if (video.duration) {
+            duration = video.duration;
+            console.log('Video duration:', duration);
+            if (video.readyState >= 2) {
+                video.currentTime = 0;
+                currentTime = 0;
+                targetTime = 0;
+            }
         }
-    }, { once: true });
+    };
 
-    // Get video duration when ready
-    video.addEventListener('loadedmetadata', () => {
-        duration = video.duration;
-    }, { once: true });
+    video.addEventListener('loadedmetadata', setupDuration, { once: true });
+    if (video.readyState >= 1) setupDuration();
 
-    // Try to set initial frame if already loaded
-    if (video.readyState >= 2) {
-        duration = video.duration;
-        video.currentTime = 0.01;
-    }
-
-    // Scroll-based animation for panels (works on both mobile and desktop)
+    // Panel count and thresholds
     const panelCount = panels.length;
     const panelThreshold = 1 / panelCount;
-    let ticking = false;
 
-    function updateOnScroll() {
-        if (ticking) return;
-        ticking = true;
-
-        requestAnimationFrame(() => {
-            const rect = container.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-
-            // Calculate scroll progress through the section
-            // Section starts when top enters viewport, ends when bottom leaves viewport
-            const sectionTop = rect.top + window.pageYOffset;
-            const sectionHeight = container.offsetHeight;
-
-            // Current scroll position relative to section start
-            const scrollTop = window.pageYOffset;
-            const sectionStart = sectionTop - windowHeight;
-            const sectionEnd = sectionTop + sectionHeight;
-
-            // Progress: 0 when section first enters viewport, 1 when it leaves
-            let progress = (scrollTop - sectionStart) / (sectionEnd - sectionStart);
-            progress = Math.max(0, Math.min(1, progress));
-
-            // Update video time based on scroll progress
-            if (duration && video.readyState >= 2 && progress > 0 && progress < 1) {
-                const targetTime = progress * duration;
-                // Only update if significant change (performance)
-                if (Math.abs(video.currentTime - targetTime) > 0.05) {
-                    video.currentTime = targetTime;
-                }
-            }
-
-            // Update panels - each panel shows for 1/panelCount of the scroll
-            panels.forEach((panel, index) => {
-                const panelStart = index * panelThreshold;
-                const panelEnd = (index + 1) * panelThreshold;
-                const isActivePanel = progress >= panelStart && progress < panelEnd;
-
-                if (isActivePanel) {
-                    panel.classList.add('active');
-                } else {
-                    panel.classList.remove('active');
-                }
-            });
-
-            ticking = false;
-        });
+    // Smooth interpolation function
+    function lerp(start, end, factor) {
+        return start + (end - start) * factor;
     }
 
-    window.addEventListener('scroll', updateOnScroll, { passive: true });
-    updateOnScroll(); // Initial call
+    // Animation loop for smooth video scrubbing
+    function animate() {
+        if (!duration) {
+            animationFrameId = requestAnimationFrame(animate);
+            return;
+        }
+
+        // Smoothly interpolate current time towards target
+        if (Math.abs(targetTime - currentTime) > 0.01) {
+            currentTime = lerp(currentTime, targetTime, lerpFactor);
+
+            // Update video frame
+            if (video.readyState >= 2) {
+                video.currentTime = currentTime;
+            }
+
+            // Calculate progress for panels (0 to 1)
+            const progress = currentTime / duration;
+
+            // Only update panels if progress changed significantly
+            if (Math.abs(progress - lastProgress) > 0.001) {
+                lastProgress = progress;
+
+                // Update panels based on progress
+                panels.forEach((panel, index) => {
+                    // Each panel gets a segment of the timeline
+                    // Add small buffer zones for smoother transitions
+                    const panelStart = index * panelThreshold;
+                    const panelEnd = (index + 1) * panelThreshold;
+                    const buffer = panelThreshold * 0.15;
+
+                    let isActive = false;
+                    if (index === 0) {
+                        isActive = progress >= 0 && progress < (panelEnd - buffer);
+                    } else if (index === panelCount - 1) {
+                        isActive = progress >= (panelStart + buffer) && progress <= 1;
+                    } else {
+                        isActive = progress >= (panelStart + buffer) && progress < (panelEnd - buffer);
+                    }
+
+                    // Also handle the transition zones
+                    const inTransition = progress >= (panelStart - buffer) && progress < (panelStart + buffer);
+                    if (inTransition && index > 0) {
+                        const transitionProgress = (progress - (panelStart - buffer)) / (buffer * 2);
+                        if (transitionProgress > 0.5) {
+                            isActive = true;
+                        }
+                    }
+
+                    panel.classList.toggle('active', isActive);
+                });
+            }
+        }
+
+        animationFrameId = requestAnimationFrame(animate);
+    }
+
+    // Calculate scroll progress
+    function calculateProgress() {
+        const rect = container.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const containerHeight = container.offsetHeight;
+
+        // Calculate progress based on scroll position
+        // Start: when container top enters viewport bottom
+        // End: when container bottom leaves viewport top
+        const scrollRange = containerHeight - windowHeight;
+        const scrollProgress = -rect.top / scrollRange;
+
+        return Math.max(0, Math.min(1, scrollProgress));
+    }
+
+    // Scroll handler - only updates target, animation loop handles the rest
+    function handleScroll() {
+        if (!isInView || !duration) return;
+        targetTime = calculateProgress() * duration;
+    }
+
+    // Intersection Observer for performance
+    const observerOptions = {
+        root: null,
+        rootMargin: '10% 0px 10% 0px',
+        threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            isInView = entry.isIntersecting;
+            if (isInView && duration) {
+                targetTime = calculateProgress() * duration;
+            }
+        });
+    }, observerOptions);
+
+    observer.observe(container);
+
+    // Event listeners
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', () => {
+        if (isInView && duration) {
+            targetTime = calculateProgress() * duration;
+        }
+    }, { passive: true });
+
+    // Touch handling for mobile smoothness
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    container.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (!isInView || !duration) return;
+        // Let the scroll event handle the progress update
+    }, { passive: true });
+
+    // Start animation loop
+    animate();
+
+    // Initial setup
+    setTimeout(() => {
+        if (duration) {
+            targetTime = calculateProgress() * duration;
+            currentTime = targetTime;
+            video.currentTime = currentTime;
+        }
+    }, 100);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        observer.disconnect();
+    });
 }
 
 // Video loop - simple seamless loop for better performance
